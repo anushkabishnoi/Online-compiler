@@ -19,7 +19,7 @@ def compile_with_docker(code):
         f.write(code)
     # run the docker container to execute the python code
     try:
-        result = subprocess.run(['docker', 'run', '--rm', '--v', f"{os.getcwd()}:/app", 'python:3.8-slim', 'python', '/app/temp.py'],
+        result = subprocess.run(['docker', 'run', '--rm', '-v', f"{os.getcwd()}:/app", 'python:3.8-slim', 'python', '/app/temp.py'],
                                 stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         
         # capture the output and errors
@@ -36,4 +36,4 @@ def compile_with_docker(code):
         
     except Exception as e:
         return f"Compilation failed: {str(e)}"
-    return 'Compiled Output'
+    # return 'Compiled Output'
