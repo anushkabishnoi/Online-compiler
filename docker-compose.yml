@@ -1,0 +1,34 @@
+version: "3"
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.backend
+    ports:
+      - "8000:8000"
+    depends_on:
+      - python-compiler
+      - java-compiler
+      - cpp-compiler
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.frontend 
+    ports:
+      - "3000:3000"
+
+  python-compiler:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.python
+
+  java-compiler:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.java
+
+  cpp-compiler:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.gcc
