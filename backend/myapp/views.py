@@ -1,25 +1,50 @@
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
-
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+import json
 import subprocess
 import os 
 
-@api_view(['POST'])
+@csrf_exempt
 def compile_code(request):
-    data = request.data
-    code = data.get('code')
     # add logic to compile code using docker
-    output = compile_with_docker(code) 
-    return Response({'output': output})
+    if request.method == 'POST':
+        data = json.loads(request.body)
+        code = data.get('code')
+        language = data.get('language')
+        output = compile_with_docker(code,language)
+        return JsonResponse({'output': output})
+    else:
+        return JsonResponse({'error': 'Invalid request method'}, status=400)
 
-def compile_with_docker(code):
+def compile_with_docker(code, language):
     # logic for docker-based compilation
+    
+    # Determine the file extension and Docker image based on language
+    extensions = {'python': 'py', 'java': 'java', 'cpp': 'cpp'}
+    docker_images = {'python':'python:3.8-slim', 'java': 'openjdk:11-slim', 'cpp': 'gcc:latest'}
+    file_name = f"temp.{extensions[language]}"
+    docker_image = docker_images[language]
+
+    # using absolute path to ensure the file is created in the current working directory
+    file_path = os.path.join(os.getcwd(), file_name)
+
     # write code to temp file
-    with open('temp.py', 'w') as f:
+    with open(file_path, 'w') as f:
         f.write(code)
+
+    # command to run the docker container
+    if language == 'python':
+        cmd = ['docker', 'run', '--rm', '-v', f"{os.getcwd()}:/app", docker_image, 'python', f'/app/{file_name}']
+    elif language == 'java':
+        cmd = ['docker', 'run', '--rm', '-v', f"{os.getcwd()}:/app", docker_image, 'sh', '-c', f"javac {file_name} && java {file_name.split('.')[0]}"]
+    elif language == 'cpp':
+        cmd = ['docker', 'run', '--rm', '-v', f"{os.getcwd()}:/app", docker_image, 'sh', '-c', f"g++ {file_name} -o main && ./main"]
+
     # run the docker container to execute the python code
     try:
-        result = subprocess.run(['docker', 'run', '--rm', '-v', f"{os.getcwd()}:/app", 'python:3.8-slim', 'python', '/app/temp.py'],
+        result = subprocess.run(cmd,
                                 stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         
         # capture the output and errors
@@ -27,7 +52,7 @@ def compile_with_docker(code):
         error = result.stderr 
 
         # clean up the temp file
-        os.remove('temp.py')
+        os.remove(file_path)
 
         if error:
             return f"Error: {error}"
@@ -36,4 +61,3 @@ def compile_with_docker(code):
         
     except Exception as e:
         return f"Compilation failed: {str(e)}"
-    # return 'Compiled Output'
