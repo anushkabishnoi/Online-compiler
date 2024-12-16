@@ -14,7 +14,7 @@ services:
   frontend:
     build:
       context: ./frontend
-      dockerfile: Dockerfile.frontend 
+      dockerfile: Dockerfile.frontend
     ports:
       - "3000:3000"
 
@@ -22,13 +22,19 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile.python
+    volumes:
+      - ./backend/docker_temp:/app
 
   java-compiler:
     build:
       context: ./backend
       dockerfile: Dockerfile.java
+    volumes:
+      - ./backend/docker_temp:/app
 
   cpp-compiler:
     build:
       context: ./backend
       dockerfile: Dockerfile.gcc
+    volumes:
+      - ./backend/docker_temp:/app

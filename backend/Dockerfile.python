@@ -1,5 +1,5 @@
-FROM python:3.8-slim
+FROM python:latest
 
 WORKDIR /app
 
-CMD ["python"]
+CMD ["python", "/app/temp.py"]

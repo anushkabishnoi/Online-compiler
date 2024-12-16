@@ -2,4 +2,6 @@ FROM gcc:latest
 
 WORKDIR /app
 
+COPY . /app
+
 CMD ["sh", "-c", "g++ main.cpp -o main && ./main"]
