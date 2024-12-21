@@ -9,13 +9,14 @@ import os
 @csrf_exempt
 def compile_code(request):
     # add logic to compile code using docker
-    if request.method == 'POST':
+    # if request.method == 'POST':
         data = json.loads(request.body)
-        code = data.get('code')
-        language = data.get('language')
+        code = data['code']
+        language = data['language']
+
         output = compile_with_docker(code,language)
         return JsonResponse({'output': output})
-    else:
+    # else:
         return JsonResponse({'error': 'Invalid request method'}, status=400)
 
 def compile_with_docker(code, language):
