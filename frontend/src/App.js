@@ -23,6 +23,7 @@ function App() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    console.log("Sending request with:", { code, language }); // Debugging log
     try {
       // const response = await axios.post("http://localhost:8000/api/compile/", {   code, language,});
       const response = await axios.post(
@@ -34,11 +35,16 @@ function App() {
           },
         }
       );
+      console.log("Response received:", response.data);
       setOutput(response.data.output);
-      // setError("");
     } catch (error) {
-      // setError(err.message);
-      setOutput("Error: " + error);
+      console.error(
+        "Error response:",
+        error.response ? error.response.data : error
+      );
+      setOutput(
+        "Error: " + (error.response ? error.response.data.error : error.message)
+      );
     }
   };
 
