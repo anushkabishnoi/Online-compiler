@@ -1,4 +1,4 @@
-version: "3"
+version: "3.9"
 services:
   backend:
     build:
@@ -6,11 +6,7 @@ services:
       dockerfile: Dockerfile.backend
     ports:
       - "8000:8000"
-    depends_on:
-      - python-compiler
-      - java-compiler
-      - cpp-compiler
-    command: python manage.py runserver 0.0.0.0:8000
+    restart: always
 
   frontend:
     build:
@@ -18,24 +14,4 @@ services:
       dockerfile: Dockerfile.frontend
     ports:
       - "3000:3000"
-
-  python-compiler:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile.python
-    volumes:
-      - ./backend/docker_temp:/app
-
-  java-compiler:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile.java
-    volumes:
-      - ./backend/docker_temp:/app
-
-  cpp-compiler:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile.gcc
-    volumes:
-      - ./backend/docker_temp:/app
+    restart: always

@@ -1,5 +1,0 @@
-FROM python:latest
-
-WORKDIR /app
-
-CMD ["python", "/app/temp.py"]

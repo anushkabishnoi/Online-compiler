@@ -1,0 +1,12 @@
+new approach
+
+- removed all 3 containers (python, cpp, java) (overkill)
+- only front back 
+- now back does compilation
+- ephemeral containers (whatever that is)
+- no mounting volumes (unnessecary complexity)
+- instead of building containers on the fly, prepping prebuilt images with all necessary compilers installed 
+- ephemeral containers launched for each code execution request without mounting shared volumes
+- temp file handling -> writing temp files and managing cleanup manually within containers increases the risk of issues (eg. lingering files or volume conflicts)
+- using python's tempfile for temporary files, to avoid manual cleanup 
+- using in-process compilation with subprocess (instead of docker containers) (can be a gradual optimization)

@@ -1,0 +1,37 @@
+--> took decision to make compiler from scratch but not competely from scratch ;)
+used compiler images and containerised them and called api compile request with a django server and displayed output on react frontend
+
+1. created containers per language available (on my project not otherwise)
+--> took decision of making single git repo in root directory
+2. created frontend backend containers -> to ensure portability and uniformity
+3. yaml file to run everything all at once (3000 port frontend, 8000 port django server backend)
+4. compilers compiling (tests.py in django) -> didnt work for the longest time (intermediate files that are actually compiled were not sticking around long enough for the compilers to compile them -> file not found)
+5. network error 400 (literally no api set up to make calls)
+--> took decision to call compile api -> api/compile/ instead of compile_code (method name)
+6. urls.py - pattern for the api/compile created (causing the 400 since it was called compile_code in urls, and called the compile_code method in views.py) -> now changed to api/compile which uses the compile_code method (naming issue solved)
+7. backend causing issues, cors needed to be installed
+8. axios set up in frontend to make api backend calls
+9. cors configured in backend
+10. cors added in settings.py (backend django)
+11. backend error 500 on frontend - server error (meaning backend malfunction)
+   * curl -> command line tool used to send http requests
+12. server (backend container actually - here atleast (not always)) is using python subprocess module to run docker command to run the compilation request, so docker needs to be installed on the backend container (not default since is not usually a requirement)
+but we can use one of 2 approaches - 1. use host machine's docker (easier, not portable, security risk)    
+                                     2.  install docker on the container (portable, no risk of the same type)
+* this issue arises when you need a container to orchestrate other containers
+* by saying "docker not found" (the error caused) it refers to docker executable and its environment 
+--> took decision to use host machine's docker installation 
+      1. common practice : used in production CI/CD systems and orchestration tools, eg. jenkins, gitlab runners, where a container interacts with docker
+      2. smaller image size (do need to install docker binaries in container)
+      3. less duplication : reuses host's docker installation
+      * security risk - Exposing the Docker socket allows the container to control the host's Docker daemon, which can potentially compromise the host system if the container or application is exploited.
+      * Mitigation Strategies:
+         1. Restrict access to the container (use firewalls, secure networks).
+         2. Ensure only trusted code can run in the container.
+         3. Use a dedicated host system or VM for running the Dockerized app if security is a concern.
+   * other option (new installation inside backend container would've been entirely portable, since absolutely no dependancy on the host system (host's docker installation))
+13. now exception raised for docker not found inside the backend container - frontend says 500 internal server error (confirmed by django logs - docker-compose up)
+   * When you're using subprocess.run(["docker", ...]), the backend container is expected to have the CLI installed to communicate with the Docker daemon. You're not installing a full Docker engine in the container—just the CLI tool.
+   * Why Not Use Full Docker in the Container?
+   Installing the full Docker engine inside the backend container is overkill and leads to issues like container-in-container setups. Mounting the host's docker.sock with a CLI in the container is the cleaner, standard approach. 
+14. now compiler exits w 0 code, but then is offline -> so backend container keeps running (restart always in dockerfile) -> since backend container is anyways the one sending compilation requests to the compiler containers -> so it will send request, compiler containers only run when needed -> if cpp needed only cpp runs 

@@ -1,110 +1,67 @@
-# from rest_framework.decorators import api_view
-# from rest_framework.response import Response
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 import json
-import subprocess   
-import os 
+import subprocess
+import tempfile
+import logging
+
+logger = logging.getLogger(__name__)
 
 @csrf_exempt
 def compile_code(request):
-    # add logic to compile code using docker
-    # if request.method == 'POST':
-        data = json.loads(request.body)
-        code = data['code']
-        language = data['language']
+    if request.method == 'POST':
+        try:
+            logger.info("Received request body: %s", request.body.decode('utf-8'))  # Debugging
+            data = json.loads(request.body)
 
-        output = compile_with_docker(code,language)
-        return JsonResponse({'output': output})
-    # else:
-        return JsonResponse({'error': 'Invalid request method'}, status=400)
+            code = data.get('code')
+            language = data.get('language')
 
-def compile_with_docker(code, language):
-    # logic for docker-based compilation
-    
-    # Determine the file extension and Docker image based on language
+            if not code or not language:
+                logger.error("Invalid input: code=%s, language=%s", code, language)
+                return JsonResponse({'error': 'Invalid input. Please provide both "code" and "language".'}, status=400)
+
+            # Compile and execute the code
+            output = compile_and_execute(code, language)
+            return JsonResponse({'output': output})
+        
+        except json.JSONDecodeError as e:
+            logger.error("JSON decoding error: %s", str(e))
+            return JsonResponse({'error': 'Invalid JSON format.'}, status=400)
+        
+        except Exception as e:
+            logger.error("Unexpected error: %s", str(e))
+            return JsonResponse({'error': f'Internal server error: {str(e)}'}, status=500)
+
+    return JsonResponse({'error': 'Invalid request method'}, status=400)
+
+def compile_and_execute(code, language):
     extensions = {'python': 'py', 'java': 'java', 'cpp': 'cpp'}
-    docker_images = {'python':'python-compiler', 'java': 'java-compiler', 'cpp': 'cpp-compiler'}
+    commands = {
+        'python': lambda file_path: ['python', file_path],
+        'java': lambda file_path: ['sh', '-c', f"javac {file_path} && java {file_path.split('.')[0]}"],
+        'cpp': lambda file_path: ['sh', '-c', f"g++ {file_path} -o /tmp/main && /tmp/main"]
+    }
 
-    # set the temp directory for the files (main.java etc)
-    # temp_dir = "/tmp/docker_compile"
-    # temp_dir = os.path.join(os.getcwd(), 'docker_temp')
-    temp_dir = '/app'
-    # os.makedirs(temp_dir, exist_ok=True)
+    if language not in extensions or language not in commands:
+        return "Unsupported language."
 
-    if language == 'java':
-        file_name = "Main.java" # to ensure filename is Main.java for java (causing problems)
-        compiled_file = "Main.class"
-    elif language == 'cpp':
-        file_name = "main.cpp"
-        compiled_file = "main"
-    else:
-        file_name = f"temp.{extensions[language]}"
-        compiled_file = None
-    
-    docker_image = docker_images[language]
-
-    # using absolute path to ensure the file is created in the current working directory
-    # file_path = os.path.join(os.getcwd(), file_name)   # previously 'temp.py' 
-    file_path = os.path.join(temp_dir, file_name)
+    file_extension = extensions[language]
+    command_func = commands[language]
 
     try:
-        # ensure the directory exists
-        os.makedirs(temp_dir, exist_ok=True)
+        with tempfile.NamedTemporaryFile(suffix=f".{file_extension}", delete=True) as temp_file:
+            temp_file.write(code.encode())
+            temp_file.flush()
 
-        print(f"Creating file: {file_path}")
-        # write code to temp file
-        with open(file_path, 'w') as f:  # 'temp.py' inplace of file_path here (previously)
-            f.write(code)
-        
-        # check if file exists / verifying file creation
-        if not os.path.exists(file_path):
-            print(f"File not found: {file_path}")
-            return f"Error: File not found - {file_path}"
-        
-        print(f"Running command in Docker: {docker_image}")
+            # Run the command
+            command = command_func(temp_file.name)
+            result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
-        # command to run the docker container
-        if language == 'python':
-            cmd = ['docker', 'run', '--rm', '-v', 'docker_temp:/app', docker_image, 'python', f'/app/{file_name}']
-        elif language == 'java':
-            cmd = ['docker', 'run', '--rm', '-v', 'docker_temp:/app', docker_image, 'sh', '-c', f"javac /app/{file_name} && java -cp /app Main"]
-        elif language == 'cpp':
-            cmd = ['docker', 'run', '--rm', '-v', 'docker_temp:/app', docker_image, 'sh', '-c', f"g++ /app/{file_name} -o /app/main && /app/main"]
+            if result.returncode != 0:
+                return f"Error: {result.stderr.strip()}"
 
-        # run the docker container to execute the python code
-        print(f"Command to be run: {' '.join(cmd)}")
-        result = subprocess.run(cmd,
-                                stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=True)
-        
-        # capture the output and errors
-        output = result.stdout
-        error = result.stderr 
+            return result.stdout.strip()
 
-        # clean up the temp file
-        # os.remove(file_path)
-        # if compiled_file and os.path.exists(os.path.join(os.getcwd(), compiled_file)):
-        #     os.remove(os.path.join(os.getcwd(), compiled_file))
-
-        print(f"Docker command output: {output}")
-        print(f"Docker command error: {error}")
-
-        if error:
-            return f"Error: {error}"
-        else:
-            return output
-        
-    # except Exception as e:
-    except subprocess.CalledProcessError as e:
-        return f"Compilation failed: {str(e)}"
-    
-    finally:
-        # to ensure temp file deletion post exec
-        if os.path.exists(file_path):
-            print(f"Deleting file: {file_path}")
-            os.remove(file_path)
-        # if compiled_file and os.path.exists(os.path.join(os.getcwd(), compiled_file)):
-        #     os.remove(os.path.join(os.getcwd(), compiled_file))
-        if compiled_file and os.path.exists(os.path.join(temp_dir, compiled_file)):
-            print(f"Deleting compiled file: {os.path.join(temp_dir, compiled_file)}")
-            os.remove(os.path.join(temp_dir, compiled_file))
+    except Exception as e:
+        return f"Execution error: {str(e)}"

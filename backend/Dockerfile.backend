@@ -1,11 +1,31 @@
-FROM python:3.8-slim
+# Use a minimal base image
+FROM debian:bookworm-slim
 
+# Install necessary packages
+RUN apt-get update && apt-get install -y \
+    python3.10 python3-pip python3-venv      # Python, pip, and venv                   build-essential                          # C++ tools (gcc, g++)              openjdk-17-jdk                           # Java tools (javac, java)         curl &&                                  # Utility for debugging                                          apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Set up PATH for Java
+ENV JAVA_HOME="/usr/lib/jvm/java-11-openjdk-amd64"
+ENV PATH="$JAVA_HOME/bin:$PATH"
+
+# Set up the application
+COPY requirements.txt /app/requirements.txt
 WORKDIR /app
 
+# Create and activate a virtual environment
+RUN python3 -m venv /app/venv && \
+    /app/venv/bin/pip install --upgrade pip && \
+    /app/venv/bin/pip install -r requirements.txt
+
+# Add virtual environment to PATH
+ENV PATH="/app/venv/bin:$PATH"
+
+# Copy the backend application code
 COPY . /app
 
-RUN pip install --no-cache-dir -r requirements.txt
-
+# Expose the desired port
 EXPOSE 8000
 
-CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
+# Run the application
+CMD ["python3", "manage.py", "runserver", "0.0.0.0:8000"]

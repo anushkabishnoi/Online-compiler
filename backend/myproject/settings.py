@@ -57,7 +57,7 @@ CORS_ALLOWED_ORIGINS = [
 ]
 
 # huge security risk -> so commented duh lol
-# CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOW_ALL_ORIGINS = True
 
 CORS_ALLOW_METHODS = [
     'DELETE',
